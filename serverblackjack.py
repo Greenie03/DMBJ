@@ -5,12 +5,15 @@ import asyncio
 
 allTables = []
 
-async def read_command(reader,command):
-    data = await reader.readline()
-    return data.decode().replace(command + " ",'')
 
-async def send_message(writer,msg):
+async def read_command(reader, command):
+    data = await reader.readline()
+    return data.decode().replace(command + " ", '')
+
+
+async def send_message(writer, msg):
     writer.write(str(msg).encode() + b"\r\n")
+
 
 class Table:
     def __init__(self, name, time):
@@ -40,7 +43,7 @@ class Card:
         self.number = number
 
     def __str__(self):
-	return number + " de " + symbol
+        return number + " de " + symbol
 
 
 class Player:
@@ -53,7 +56,7 @@ class Player:
         return self.name
 
     def get_hand(self):
-        return self.hand	
+        return self.hand
 
     def get_score(self):
         return self.score
@@ -64,14 +67,16 @@ class Player:
     def add_to_score(self, value):
         self.score += value
 
+
 def init_deck():
     deck = []
     symbolList = ["Coeur", "Carreau", "Trefle", "Pic"]
     numberList = ["As", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Valet", "Dame", "Roi"]
     for i in symbolList:
         for j in numberList:
-            deck.append(Card(i,j))
+            deck.append(Card(i, j))
     return deck
+
 
 async def blackjack_game(table, reader, writer, deck):
     random.shuffle(deck)
@@ -81,27 +86,26 @@ async def blackjack_game(table, reader, writer, deck):
             table.get_players()["donneur"].add_to_hand(deck.pop())
     writer.write(str(table.get_players()[writer.get_extra_info('peername')[0]].get_hand()).encode() + b"\r\n")
     data = await reader.readline()
-    rcv  = int(data.decode().replace("MORE ",''))
+    rcv = int(data.decode().replace("MORE ", ''))
     while rcv != 0 or table.get_players()[writer.get_extra_info('peername')[0]].get_score <= 21:
-        #faire les bandibangas
+        # faire les bandibangas
         writer.write(str(table.get_players()[writer.get_extra_info('peername')[0]].get_hand()).encode() + b"\r\n")
-        await send_message(writer,'.')
+        await send_message(writer, '.')
         data = await reader.readline()
-        rcv  = int(data.decode().replace("MORE ",''))
+        rcv = int(data.decode().replace("MORE ", ''))
     if table.get_players()[writer.get_extra_info('peername')[0]].get_score > 21:
-        await send_message(writer,"Vous avez perdu.")
-
+        await send_message(writer, "Vous avez perdu.")
 
 
 async def croupier(reader, writer):
     welcome_msg = "Hello " + writer.get_extra_info('peername')[0]
-    await send_message(writer,welcome_msg)
+    await send_message(writer, welcome_msg)
     data = await reader.readline()
-    table_name = data.decode().replace("NAME ",'')
-    await send_message(writer,"Table créée avec " + table_name)
+    table_name = data.decode().replace("NAME ", '')
+    await send_message(writer, "Table créée avec " + table_name)
     data = await reader.readline()
-    table_time = int(data.decode().replace("TIME ",''))
-    await send_message(writer,"Temps affecté avec " + str(table_time))
+    table_time = int(data.decode().replace("TIME ", ''))
+    await send_message(writer, "Temps affecté avec " + str(table_time))
     allTables.append(Table(table_name, table_time))
 
 
@@ -109,12 +113,12 @@ async def joueur(reader, writer):
     welcome_msg = "Bonjour " + writer.get_extra_info('peername')[0]
     msg = ""
     table_name = ""
-    await send_message(writer,welcome_msg)
+    await send_message(writer, welcome_msg)
     data = await reader.readline()
-    table_name = data.decode().replace("NAME ",'')
+    table_name = data.decode().replace("NAME ", '')
     if table_name not in [i.get_name() for i in allTables]:
-        await send_message(writer,"Cette table n'existe pas")
-        await send_message(writer,"END")
+        await send_message(writer, "Cette table n'existe pas")
+        await send_message(writer, "END")
     else:
         for i in allTables:
             if i.get_name() == table_name:
@@ -130,7 +134,7 @@ async def joueur(reader, writer):
             msg += " sont connectés à la table : " + table_name
         await send_message(writer, msg)
         while not (len(table.get_players()) >= 8 or table.get_time() <= 0):
-            await send_message(writer,table.get_time())
+            await send_message(writer, table.get_time())
             await asyncio.sleep(1)
             table.set_time(table.get_time() - 1)
         if table in allTables:
