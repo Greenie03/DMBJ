@@ -5,12 +5,6 @@ import asyncio
 
 allTables = []
 
-
-async def read_command(reader, command):
-    data = await reader.readline()
-    return data.decode().replace(command + " ", '')
-
-
 async def send_message(writer, msg):
     writer.write(str(msg).encode() + b"\r\n")
 
