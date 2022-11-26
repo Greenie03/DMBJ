@@ -36,6 +36,20 @@ class Table:
     def set_time(self, new_time):
         self.time = new_time
 
+    def get_winner(self):
+        winner = self.players["donneur"]
+        for i in self.players:
+            if winner.get_score() < self.players[i].get_score() and self.players[i].get_score() <= 21 or winner.get_score() > 21:
+                winner = self.players[i]
+        return winner
+
+    def finished(self):
+        for i in self.players:
+            if self.players[i].get_is_playing() == True:
+                return False
+        return True
+
+
 
 class Card:
     def __init__(self, symbol, number,value):
@@ -85,6 +99,15 @@ class Player:
         else:
             self.score += card.get_value()
 
+    def playing(self):
+        self.is_playing = True
+
+    def done(self):
+        self.is_playing = False
+
+    def get_is_playing(self):
+        return self.is_playing
+
 
 def init_deck():
     deck = []
@@ -97,38 +120,38 @@ def init_deck():
 
 
 async def blackjack_game(table, reader, writer, deck):
-    
+    table.get_players()[writer.get_extra_info('peername')[0]].playing()
     random.shuffle(deck)
     for i in range(2):
         table.get_players()[writer.get_extra_info('peername')[0]].add_to_hand(deck.pop())
         if len(table.get_players()["donneur"].get_hand()) <= 2:
             table.get_players()["donneur"].add_to_hand(deck.pop())
     writer.write(("donneur : " + str(table.get_players()["donneur"].get_hand()[0]) + ", votre main : " + table.get_players()[writer.get_extra_info('peername')[0]].display_hand() + ", votre score : " + str(table.get_players()[writer.get_extra_info('peername')[0]].get_score())).encode() + b"\r\n")
-    await send_message(writer, '.')
-    data = await reader.readline()
-    rcv = int(data.decode().replace("MORE ", ''))
-    while rcv != 0 and table.get_players()[writer.get_extra_info('peername')[0]].get_score() <= 21:
+    rcv = 1
+    while rcv != 0 and table.get_players()[writer.get_extra_info('peername')[0]].get_score() < 21:
+        await send_message(writer, '.')
+        data = await reader.readline()
+        rcv = int(data.decode().replace("MORE ", ''))
         if rcv == 1:
             table.get_players()[writer.get_extra_info('peername')[0]].add_to_hand(deck.pop())
             writer.write(("donneur : " + str(table.get_players()["donneur"].get_hand()[0]) + ", votre main : " +
                       table.get_players()[
                           writer.get_extra_info('peername')[0]].display_hand() + ", votre score : " + str(
                     table.get_players()[writer.get_extra_info('peername')[0]].get_score())).encode() + b"\r\n")
-        await send_message(writer, '.')
-        data = await reader.readline()
-        rcv = int(data.decode().replace("MORE ", ''))
-    card = deck.pop()
-    while table.get_players()["donneur"].get_score() + card.get_value() <= 17:
-        table.get_players()["donneur"].add_to_hand(card)
-        card = deck.pop()
+    table.get_players()[writer.get_extra_info('peername')[0]].done()
+    while not table.finished():
+        await send_message(writer, "En attente des autres joueurs...")
+        await asyncio.sleep(3)
+    while table.get_players()["donneur"].get_score() <= 17:
+        table.get_players()["donneur"].add_to_hand(deck.pop())
     await send_message(writer, "score du donneur : " + str(table.get_players()["donneur"].get_score()))
-    if table.get_players()[writer.get_extra_info('peername')[0]].get_score() > table.get_players()["donneur"].get_score() and table.get_players()[writer.get_extra_info('peername')[0]].get_score() < 21:
-        await send_message(writer,"Vous avez gagné")
-    elif table.get_players()[writer.get_extra_info('peername')[0]].get_score() == table.get_players()[
-            "donneur"].get_score() and table.get_players()["donneur"].get_score() < 21:
+    if table.get_winner().get_name() == table.get_players()[writer.get_extra_info('peername')[0]].get_name():
+        await send_message(writer, "Vous avez gagné !")
+    elif table.get_players()["donneur"].get_score() >= 21 and table.get_players()["donneur"].get_score() == table.get_players()[writer.get_extra_info('peername')[0]].get_score():
         await send_message(writer, "Vous avez fait égalité")
     else:
-        await send_message(writer, "Vous avez perdu")
+        await send_message(writer, "Vous avez perdu, " + table.get_winner().get_name() + " a gagné...")
+
     await send_message(writer, "END")
 
 async def croupier(reader, writer):
