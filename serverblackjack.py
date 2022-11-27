@@ -33,7 +33,7 @@ class Table:
     def get_winner(self):
         winner = self.players["donneur"]
         for i in self.players:
-            if winner.get_score() < self.players[i].get_score() and self.players[i].get_score() <= 21 or winner.get_score() > 21:
+            if winner.get_score() <= self.players[i].get_score() and self.players[i].get_score() <= 21 or winner.get_score() > 21:
                 winner = self.players[i]
         return winner
 
@@ -120,7 +120,7 @@ async def blackjack_game(table, reader, writer, deck):
         table.get_players()[writer.get_extra_info('peername')[0]].add_to_hand(deck.pop())
         if len(table.get_players()["donneur"].get_hand()) <= 2:
             table.get_players()["donneur"].add_to_hand(deck.pop())
-    writer.write(("donneur : " + str(table.get_players()["donneur"].get_hand()[0]) + ", votre main : " + table.get_players()[writer.get_extra_info('peername')[0]].display_hand() + ", votre score : " + str(table.get_players()[writer.get_extra_info('peername')[0]].get_score())).encode() + b"\r\n")
+    writer.write(("donneur : " + str(table.get_players()["donneur"].get_hand()[0]) + "\n votre main : " + table.get_players()[writer.get_extra_info('peername')[0]].display_hand() + "\n votre score : " + str(table.get_players()[writer.get_extra_info('peername')[0]].get_score())).encode() + b"\r\n")
     rcv = 1
     while rcv != 0 and table.get_players()[writer.get_extra_info('peername')[0]].get_score() < 21:
         await send_message(writer, '.')
@@ -128,9 +128,9 @@ async def blackjack_game(table, reader, writer, deck):
         rcv = int(data.decode().replace("MORE ", ''))
         if rcv == 1:
             table.get_players()[writer.get_extra_info('peername')[0]].add_to_hand(deck.pop())
-            writer.write(("donneur : " + str(table.get_players()["donneur"].get_hand()[0]) + ", votre main : " +
+            writer.write(("donneur : " + str(table.get_players()["donneur"].get_hand()[0]) + "\n votre main : " +
                       table.get_players()[
-                          writer.get_extra_info('peername')[0]].display_hand() + ", votre score : " + str(
+                          writer.get_extra_info('peername')[0]].display_hand() + "\n votre score : " + str(
                     table.get_players()[writer.get_extra_info('peername')[0]].get_score())).encode() + b"\r\n")
     table.get_players()[writer.get_extra_info('peername')[0]].done()
     while not table.finished():
